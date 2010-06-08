@@ -26,7 +26,7 @@
 				<key>Identifier</key>
 				<string>google-status</string>
 				<key>Image</key>
-				<string>logged_out.png</string>
+				<string>google_out.png</string>
 				<key>Label</key>
 				<string>Google Status</string>
 				<key>Palette Label</key>

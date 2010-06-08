@@ -4,19 +4,23 @@
 <title>Google Status</title>
 <script>
 
-    var pollIntervalMin = 1000 * 5;  // 10 seconds
-    var pollIntervalMax = 1000 * 60 * 60;  // 1 hour
-    var requestFailureCount = 0;  // used for exponential backoff
-    var requestTimeout = 1000 * 5;  // 5 seconds
+    var requestFailureCount = 0;
+    var requestTimeout = 1000 * 10;
 
     var username;
 
+    // false = logged off
+    // true = logged in
+    var googleStatus = false;
+
+    var isInProgress = false;
+
     function showLoggedIn() {
-        changeIcon("safari-extension://logged_in.png");
+        changeIcon(safari.extension.baseURI + "google_in.png");
     }
 
     function showLoggedOut() {
-        changeIcon("");
+        changeIcon(safari.extension.baseURI + "google_out.png");
     }
 
     function changeIcon(img) {
@@ -24,29 +28,34 @@
         var itemArray = safari.extension.toolbarItems;
         for (var i = 0; i < itemArray.length; ++i) {
             var item = itemArray[i];
-            console.log(item, item.identifier);
-            if (item.identifier === "com.yikulju.googlestatus-safari-W6855SF6YU google-status") {
-                // item.image = img;
-                console.log(item.image);
+            if (item.identifier.search(/\bgoogle-status/) > -1) {
+                item.image = img;
+                item.toolTip = username || "Not logged in";
             }
         }
     }
 
     function startRequest() {
 
-        console.log("stat request");
+        isInProgress = true;
         getCurrentUser( function (un) {
 
-            console.log(un);
+            username = un;
+            isInProgress = false;
             // if the user is logged in
             if (un !== undefined) {
-                showLoggedIn();
+                if (!googleStatus) {
+                    showLoggedIn();
+                    googleStatus = true;
+                }
             } else {
-                showLoggedOut();
+                if (googleStatus) {
+                    showLoggedOut();
+                    googleStatus = false;
+                }
             }
-            username = un;
         });
-        scheduleRequest();
+
     }
 
 
@@ -55,13 +64,13 @@
 
         var xhr = new XMLHttpRequest();
 
-        // var abortTimerId = window.setTimeout(function() {
-        //    xhr.abort();
-        //  }, requestTimeout);
+        var abortTimerId = window.setTimeout(function() {
+           xhr.abort();
+         }, requestTimeout);
 
          function handleSuccess() {
            requestFailureCount = 0;
-           // window.clearTimeout(abortTimerId);
+           window.clearTimeout(abortTimerId);
            if (successHandler !== undefined) {
                successHandler(xhr);
            }
@@ -69,7 +78,7 @@
 
          function handleError() {
            ++requestFailureCount;
-           // window.clearTimeout(abortTimerId);
+           window.clearTimeout(abortTimerId);
          }
 
 
@@ -91,15 +100,11 @@
     /**
      * It returns the logged user's loginname
      * @param callback
-     *
-     * Based on Guillaume Boudreau's code
-     * http://groups.google.com/a/chromium.org/group/chromium-extensions/browse_thread/thread/6e46a3a6e46d9110/dc1df0c3fc98614e?lnk=gst&q=logged+in#dc1df0c3fc98614e
      */
     function getCurrentUser(callback) {
 
         var currentUser;
 
-        console.log("get current user");
         sendXHR('http://www.google.com/', function (xhr) {
             if (xhr.status === 200) {
                 var re = new RegExp(/<b class="?gb4"?>[\s]*([^<]+@[^<]+)<\/b>/i),
@@ -116,46 +121,31 @@
         });
     }
 
-    function scheduleRequest() {
-      var randomness = Math.random() * 2;
-      var exponent = Math.pow(2, requestFailureCount);
-      var delay = Math.min(randomness * pollIntervalMin * exponent, pollIntervalMax);
-      delay = Math.round(delay);
-
-      window.setTimeout(startRequest, delay);
-    }
-
-
     function init() {
-
-
         // default is logged off
         showLoggedOut();
-
-        startRequest();
-
+        googleStatus = false;
     }
 
 
-    init();
+    function performCommand(event)  {
+        // no action yet
+    }
 
+    function validateCommand(event) {
+        // not in progress
+        if (!isInProgress) {
+            startRequest();
+        }
 
-    // function performCommand(event)
-    // {
-    //     if (event.command === "reload-page") {
-    //         changeIcon(0);
-    //     }
-    // }
-
-    function validateCommand(event)
-    {
         return true;
     }
 
-    // if event handlers are in the global HTML page,
-    // register with application:
-    // safari.application.addEventListener("command", performCommand, false);
+    safari.application.addEventListener("command", performCommand, false);
     safari.application.addEventListener("validate", validateCommand, false);
+
+    init();
+
 </script>
 
 </head>
