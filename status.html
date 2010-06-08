@@ -1,0 +1,164 @@
+<!DOCTYPE html>
+<html>
+<head>
+<title>Google Status</title>
+<script>
+
+    var pollIntervalMin = 1000 * 5;  // 10 seconds
+    var pollIntervalMax = 1000 * 60 * 60;  // 1 hour
+    var requestFailureCount = 0;  // used for exponential backoff
+    var requestTimeout = 1000 * 5;  // 5 seconds
+
+    var username;
+
+    function showLoggedIn() {
+        changeIcon("safari-extension://logged_in.png");
+    }
+
+    function showLoggedOut() {
+        changeIcon("");
+    }
+
+    function changeIcon(img) {
+
+        var itemArray = safari.extension.toolbarItems;
+        for (var i = 0; i < itemArray.length; ++i) {
+            var item = itemArray[i];
+            console.log(item, item.identifier);
+            if (item.identifier === "com.yikulju.googlestatus-safari-W6855SF6YU google-status") {
+                // item.image = img;
+                console.log(item.image);
+            }
+        }
+    }
+
+    function startRequest() {
+
+        console.log("stat request");
+        getCurrentUser( function (un) {
+
+            console.log(un);
+            // if the user is logged in
+            if (un !== undefined) {
+                showLoggedIn();
+            } else {
+                showLoggedOut();
+            }
+            username = un;
+        });
+        scheduleRequest();
+    }
+
+
+
+    function sendXHR(url, successHandler) {
+
+        var xhr = new XMLHttpRequest();
+
+        // var abortTimerId = window.setTimeout(function() {
+        //    xhr.abort();
+        //  }, requestTimeout);
+
+         function handleSuccess() {
+           requestFailureCount = 0;
+           // window.clearTimeout(abortTimerId);
+           if (successHandler !== undefined) {
+               successHandler(xhr);
+           }
+         }
+
+         function handleError() {
+           ++requestFailureCount;
+           // window.clearTimeout(abortTimerId);
+         }
+
+
+        xhr.onreadystatechange = function(data) {
+            if (xhr.readyState === 4) {
+                handleSuccess();
+            }
+        };
+
+        xhr.onerror = function(error) {
+             handleError();
+        };
+
+
+        xhr.open('GET', url, true);
+        xhr.send();
+    }
+
+    /**
+     * It returns the logged user's loginname
+     * @param callback
+     *
+     * Based on Guillaume Boudreau's code
+     * http://groups.google.com/a/chromium.org/group/chromium-extensions/browse_thread/thread/6e46a3a6e46d9110/dc1df0c3fc98614e?lnk=gst&q=logged+in#dc1df0c3fc98614e
+     */
+    function getCurrentUser(callback) {
+
+        var currentUser;
+
+        console.log("get current user");
+        sendXHR('http://www.google.com/', function (xhr) {
+            if (xhr.status === 200) {
+                var re = new RegExp(/<b class="?gb4"?>[\s]*([^<]+@[^<]+)<\/b>/i),
+                    m = re.exec(xhr.responseText);
+                if (m && m.length == 2) {
+                        currentUser = m[1];
+                }
+            }
+
+            // we have a response anyway
+            if (callback !== undefined) {
+                callback(currentUser);
+            }
+        });
+    }
+
+    function scheduleRequest() {
+      var randomness = Math.random() * 2;
+      var exponent = Math.pow(2, requestFailureCount);
+      var delay = Math.min(randomness * pollIntervalMin * exponent, pollIntervalMax);
+      delay = Math.round(delay);
+
+      window.setTimeout(startRequest, delay);
+    }
+
+
+    function init() {
+
+
+        // default is logged off
+        showLoggedOut();
+
+        startRequest();
+
+    }
+
+
+    init();
+
+
+    // function performCommand(event)
+    // {
+    //     if (event.command === "reload-page") {
+    //         changeIcon(0);
+    //     }
+    // }
+
+    function validateCommand(event)
+    {
+        return true;
+    }
+
+    // if event handlers are in the global HTML page,
+    // register with application:
+    // safari.application.addEventListener("command", performCommand, false);
+    safari.application.addEventListener("validate", validateCommand, false);
+</script>
+
+</head>
+<body>
+</body>
+</html>
