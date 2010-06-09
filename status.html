@@ -4,16 +4,16 @@
 <title>Google Status</title>
 <script>
 
-    var requestFailureCount = 0;
-    var requestTimeout = 1000 * 10;
+    var pollIntervalMin = 1000 * 5;  // 5 seconds
+    var pollIntervalMax = 1000 * 60 * 60;  // 1 hour
+    var requestFailureCount = 0;  // used for exponential backoff
+    var requestTimeout = 1000 * 5;  // 5 seconds
 
     var username;
 
     // false = logged off
     // true = logged in
     var googleStatus = false;
-
-    var isInProgress = false;
 
     function showLoggedIn() {
         changeIcon(safari.extension.baseURI + "google_in.png");
@@ -37,11 +37,9 @@
 
     function startRequest() {
 
-        isInProgress = true;
         getCurrentUser( function (un) {
 
             username = un;
-            isInProgress = false;
             // if the user is logged in
             if (un !== undefined) {
                 if (!googleStatus) {
@@ -54,8 +52,17 @@
                     googleStatus = false;
                 }
             }
+            scheduleRequest();
         });
+    }
 
+    function scheduleRequest() {
+      var randomness = Math.random() * 2;
+      var exponent = Math.pow(2, requestFailureCount);
+      var delay = Math.min(randomness * pollIntervalMin * exponent, pollIntervalMax);
+      delay = Math.round(delay);
+
+      window.setTimeout(startRequest, delay);
     }
 
 
@@ -125,6 +132,7 @@
         // default is logged off
         showLoggedOut();
         googleStatus = false;
+        startRequest();
     }
 
 
@@ -133,11 +141,6 @@
     }
 
     function validateCommand(event) {
-        // not in progress
-        if (!isInProgress) {
-            startRequest();
-        }
-
         return true;
     }
 
