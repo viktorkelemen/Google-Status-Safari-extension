@@ -2,6 +2,7 @@
 <html>
 <head>
 <title>Google Status</title>
+<script src="google-identity-api/google-identity-api.js"></script>
 <script>
 
     var pollIntervalMin = 1000 * 5;  // 5 seconds
@@ -37,7 +38,7 @@
 
     function startRequest() {
 
-        getCurrentUser( function (un) {
+        GOOGLE_IDENTITY_API.getUserName( function (un) {
 
             username = un;
             // if the user is logged in
@@ -65,68 +66,6 @@
       window.setTimeout(startRequest, delay);
     }
 
-
-
-    function sendXHR(url, successHandler) {
-
-        var xhr = new XMLHttpRequest();
-
-        var abortTimerId = window.setTimeout(function() {
-           xhr.abort();
-         }, requestTimeout);
-
-         function handleSuccess() {
-           requestFailureCount = 0;
-           window.clearTimeout(abortTimerId);
-           if (successHandler !== undefined) {
-               successHandler(xhr);
-           }
-         }
-
-         function handleError() {
-           ++requestFailureCount;
-           window.clearTimeout(abortTimerId);
-         }
-
-
-        xhr.onreadystatechange = function(data) {
-            if (xhr.readyState === 4) {
-                handleSuccess();
-            }
-        };
-
-        xhr.onerror = function(error) {
-             handleError();
-        };
-
-
-        xhr.open('GET', url, true);
-        xhr.send();
-    }
-
-    /**
-     * It returns the logged user's loginname
-     * @param callback
-     */
-    function getCurrentUser(callback) {
-
-        var currentUser;
-
-        sendXHR('http://www.google.com/', function (xhr) {
-            if (xhr.status === 200) {
-                var re = new RegExp(/<b class="?gb4"?>[\s]*([^<]+@[^<]+)<\/b>/i),
-                    m = re.exec(xhr.responseText);
-                if (m && m.length == 2) {
-                        currentUser = m[1];
-                }
-            }
-
-            // we have a response anyway
-            if (callback !== undefined) {
-                callback(currentUser);
-            }
-        });
-    }
 
     function init() {
         // default is logged off
