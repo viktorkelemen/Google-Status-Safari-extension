@@ -15,6 +15,16 @@
     // true = logged in
     var googleStatus = false;
 
+    /**
+     * Logs out the user
+     */
+    function logout() {
+        var tab = safari.application.activeBrowserWindow.openTab();
+
+        tab.url = "http://www.google.com/accounts/Logout";
+    }
+
+
     function showLoggedIn() {
         changeIcon(safari.extension.baseURI + "google_in.png");
     }
@@ -85,7 +95,10 @@
 
 
     function performCommand(event)  {
-        // no action yet
+
+        if (event.command === "google-status-clicked") {
+            logout();
+        }
     }
 
     function validateCommand(event) {
