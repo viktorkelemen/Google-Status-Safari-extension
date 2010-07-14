@@ -1,16 +1,15 @@
-<!DOCTYPE html>
 <html>
 <head>
 <title>Google Status</title>
-<script src="google-identity-api/google-identity-api.js"></script>
+<script src="vaike/xhr.vaike.js"></script>
+<script src="vaike/google.vaike.js"></script>
 <script>
 
-    var pollIntervalMin = 1000 * 5;  // 5 seconds
-    var pollIntervalMax = 1000 * 60 * 60;  // 1 hour
-    var requestFailureCount = 0;  // used for exponential backoff
-    var requestTimeout = 1000 * 5;  // 5 seconds
+    var pollInterval = 1000 * 5;  // 5 seconds
 
     var username;
+
+    var scheduleTimer;
 
     // false = logged off
     // true = logged in
@@ -36,9 +35,26 @@
         }
     }
 
+    /**
+     * Kills the timer
+     *
+     * @param {Object} scheduleTimer
+     */
+    function killSchedule(scheduleTimer) {
+        if (scheduleTimer !== undefined) {
+            clearTimeout(scheduleTimer);
+        }
+    }
+
+
+    /**
+     * Starts the username request
+     */
     function startRequest() {
 
-        GOOGLE_IDENTITY_API.getUserName( function (un) {
+        killSchedule(scheduleTimer);
+
+        VAIKE.google.getUserName( function (un) {
 
             username = un;
             // if the user is logged in
@@ -53,18 +69,11 @@
                     googleStatus = false;
                 }
             }
-            scheduleRequest();
+            scheduleTimer = window.setTimeout(startRequest, pollInterval);
         });
     }
 
-    function scheduleRequest() {
-      var randomness = Math.random() * 2;
-      var exponent = Math.pow(2, requestFailureCount);
-      var delay = Math.min(randomness * pollIntervalMin * exponent, pollIntervalMax);
-      delay = Math.round(delay);
 
-      window.setTimeout(startRequest, delay);
-    }
 
 
     function init() {
